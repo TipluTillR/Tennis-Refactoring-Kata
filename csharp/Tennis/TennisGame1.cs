@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 
 namespace Tennis;
@@ -7,7 +6,6 @@ namespace Tennis;
 public record PlayerEntity
 {
     public string Name { get; }
-
     public int Score { get; private set; }
 
     public PlayerEntity(string Name, int Score)
@@ -18,12 +16,12 @@ public record PlayerEntity
 
     public string GetScoreText()
     {
-        return (ScoreValue)Score switch
+        return Score switch
         {
-            ScoreValue.Love => ScoreConstants.Love,
-            ScoreValue.Fifteen => ScoreConstants.Fifteen,
-            ScoreValue.Thirty => ScoreConstants.Thirty,
-            ScoreValue.Forty => ScoreConstants.Forty,
+            0 => ScoreConstants.Love,
+            1 => ScoreConstants.Fifteen,
+            2 => ScoreConstants.Thirty,
+            3 => ScoreConstants.Forty,
             _ => throw new NotImplementedException()
         };
     }
@@ -35,13 +33,11 @@ public record PlayerEntity
 
     public string GetNeutralScoreText()
     {
-        var score = (ScoreValue)Score;
-
-        return score switch
+        return Score switch
         {
-            ScoreValue.Love => ScoreConstants.LoveAll,
-            ScoreValue.Fifteen => ScoreConstants.FifteenAll,
-            ScoreValue.Thirty => ScoreConstants.ThirtyAll,
+            0 => ScoreConstants.LoveAll,
+            1 => ScoreConstants.FifteenAll,
+            2 => ScoreConstants.ThirtyAll,
             _ => ScoreConstants.Deuce
         };
     }
@@ -71,14 +67,6 @@ public static class ScoreConstants
     public const string Forty = "Forty";
 }
 
-public enum ScoreValue
-{
-    Love = 0,
-    Fifteen = 1,
-    Thirty = 2,
-    Forty = 3
-}
-
 public class TennisGame1 : ITennisGame
 {
     private readonly PlayerEntity[] players = new PlayerEntity[2];
@@ -92,7 +80,6 @@ public class TennisGame1 : ITennisGame
     public void WonPoint(string playerName)
     {
         PlayerEntity foundPlayer = players.FirstOrDefault(player => player.Name == playerName);
-
         foundPlayer?.IncreaseScore(1);
     }
 
@@ -103,12 +90,9 @@ public class TennisGame1 : ITennisGame
             return players[0].GetNeutralScoreText();
         }
 
-        if (IsMatchmakingScore())
-        {
-            return GetMatchMakingScoreText();
-        }
-
-        return GetIntermittentScoreText();
+        return IsMatchmakingScore() 
+            ? GetMatchMakingScoreText() 
+            : GetIntermittentScoreText();
     }
     
     private bool IsNeutralScore()
@@ -135,9 +119,7 @@ public class TennisGame1 : ITennisGame
 
     private string GetMatchMakingScoreText()
     {
-        IReadOnlyCollection<PlayerEntity> orderedPlayers = players.OrderByDescending(player => player.Score).ToArray();
-        PlayerEntity leadingPlayer = orderedPlayers.First();
-
+        PlayerEntity leadingPlayer = players.MaxBy(player => player.Score);
         bool isAdvantage = IsAdvantageScore();
 
         return isAdvantage
