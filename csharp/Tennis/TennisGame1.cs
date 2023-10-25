@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 
 namespace Tennis;
@@ -44,6 +45,16 @@ public record PlayerEntity
             _ => ScoreConstants.Deuce
         };
     }
+    
+    public string GetPlayerWinText()
+    {
+        return $"{ScoreConstants.Win} {Name}";
+    }
+
+    public string GetPlayerAdvantageText()
+    {
+        return $"{ScoreConstants.Advantage} {Name}";
+    }
 }
 
 public static class ScoreConstants
@@ -85,16 +96,6 @@ public class TennisGame1 : ITennisGame
         foundPlayer?.IncreaseScore(1);
     }
 
-    private static string GetPlayerWinText(string playerName)
-    {
-        return $"{ScoreConstants.Win} {playerName}";
-    }
-
-    private static string GetPlayerAdvantageText(string playerName)
-    {
-        return $"{ScoreConstants.Advantage} {playerName}";
-    }
-
     public string GetScore()
     {
         if (IsNeutralScore())
@@ -109,6 +110,23 @@ public class TennisGame1 : ITennisGame
 
         return GetIntermittentScoreText();
     }
+    
+    private bool IsNeutralScore()
+    {
+        return players[0].Score == players[1].Score;
+    }
+
+    private bool IsMatchmakingScore()
+    {
+        return players.Any(player => player.Score >= 4);
+    }
+
+    private bool IsAdvantageScore()
+    {
+        int scoreDifference = players[0].Score - players[1].Score;
+        
+        return Math.Abs(scoreDifference) < 2;
+    }
 
     private string GetIntermittentScoreText()
     {
@@ -117,25 +135,13 @@ public class TennisGame1 : ITennisGame
 
     private string GetMatchMakingScoreText()
     {
-        int scoreDifference = players[0].Score - players[1].Score;
-        string leadingPlayerName = scoreDifference > 0 
-            ? players[0].Name 
-            : players[1].Name;
+        IReadOnlyCollection<PlayerEntity> orderedPlayers = players.OrderByDescending(player => player.Score).ToArray();
+        PlayerEntity leadingPlayer = orderedPlayers.First();
 
-        int absScoreDifference = Math.Abs(scoreDifference);
+        bool isAdvantage = IsAdvantageScore();
 
-        return absScoreDifference < 2
-            ? GetPlayerAdvantageText(leadingPlayerName)
-            : GetPlayerWinText(leadingPlayerName);
-    }
-
-    private bool IsMatchmakingScore()
-    {
-        return players.Any(player => player.Score >= 4);
-    }
-
-    private bool IsNeutralScore()
-    {
-        return players[0].Score == players[1].Score;
+        return isAdvantage
+            ? leadingPlayer.GetPlayerAdvantageText()
+            : leadingPlayer.GetPlayerWinText();
     }
 }
