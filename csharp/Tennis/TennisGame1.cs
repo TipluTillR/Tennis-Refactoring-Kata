@@ -1,82 +1,141 @@
-namespace Tennis
+using System;
+using System.Linq;
+
+namespace Tennis;
+
+public record PlayerEntity
 {
-    public class TennisGame1 : ITennisGame
+    public string Name { get; }
+
+    public int Score { get; private set; }
+
+    public PlayerEntity(string Name, int Score)
     {
-        private int m_score1 = 0;
-        private int m_score2 = 0;
-        private string player1Name;
-        private string player2Name;
+        this.Name = Name;
+        this.Score = Score;
+    }
 
-        public TennisGame1(string player1Name, string player2Name)
+    public string GetScoreText()
+    {
+        return (ScoreValue)Score switch
         {
-            this.player1Name = player1Name;
-            this.player2Name = player2Name;
-        }
+            ScoreValue.Love => ScoreConstants.Love,
+            ScoreValue.Fifteen => ScoreConstants.Fifteen,
+            ScoreValue.Thirty => ScoreConstants.Thirty,
+            ScoreValue.Forty => ScoreConstants.Forty,
+            _ => throw new NotImplementedException()
+        };
+    }
 
-        public void WonPoint(string playerName)
+    public void IncreaseScore(int amount)
+    {
+        Score += amount;
+    }
+
+    public string GetNeutralScoreText()
+    {
+        var score = (ScoreValue)Score;
+
+        return score switch
         {
-            if (playerName == "player1")
-                m_score1 += 1;
-            else
-                m_score2 += 1;
-        }
-
-        public string GetScore()
-        {
-            string score = "";
-            var tempScore = 0;
-            if (m_score1 == m_score2)
-            {
-                switch (m_score1)
-                {
-                    case 0:
-                        score = "Love-All";
-                        break;
-                    case 1:
-                        score = "Fifteen-All";
-                        break;
-                    case 2:
-                        score = "Thirty-All";
-                        break;
-                    default:
-                        score = "Deuce";
-                        break;
-
-                }
-            }
-            else if (m_score1 >= 4 || m_score2 >= 4)
-            {
-                var minusResult = m_score1 - m_score2;
-                if (minusResult == 1) score = "Advantage player1";
-                else if (minusResult == -1) score = "Advantage player2";
-                else if (minusResult >= 2) score = "Win for player1";
-                else score = "Win for player2";
-            }
-            else
-            {
-                for (var i = 1; i < 3; i++)
-                {
-                    if (i == 1) tempScore = m_score1;
-                    else { score += "-"; tempScore = m_score2; }
-                    switch (tempScore)
-                    {
-                        case 0:
-                            score += "Love";
-                            break;
-                        case 1:
-                            score += "Fifteen";
-                            break;
-                        case 2:
-                            score += "Thirty";
-                            break;
-                        case 3:
-                            score += "Forty";
-                            break;
-                    }
-                }
-            }
-            return score;
-        }
+            ScoreValue.Love => ScoreConstants.LoveAll,
+            ScoreValue.Fifteen => ScoreConstants.FifteenAll,
+            ScoreValue.Thirty => ScoreConstants.ThirtyAll,
+            _ => ScoreConstants.Deuce
+        };
     }
 }
 
+public static class ScoreConstants
+{
+    public const string Win = "Win for";
+    public const string Advantage = "Advantage";
+    public const string LoveAll = "Love-All";
+    public const string FifteenAll = "Fifteen-All";
+    public const string ThirtyAll = "Thirty-All";
+    public const string Deuce = "Deuce";
+    public const string Love = "Love";
+    public const string Fifteen = "Fifteen";
+    public const string Thirty = "Thirty";
+    public const string Forty = "Forty";
+}
+
+public enum ScoreValue
+{
+    Love = 0,
+    Fifteen = 1,
+    Thirty = 2,
+    Forty = 3
+}
+
+public class TennisGame1 : ITennisGame
+{
+    private readonly PlayerEntity[] players = new PlayerEntity[2];
+
+    public TennisGame1(string player1Name, string player2Name)
+    {
+        players[0] = new PlayerEntity(player1Name, 0);
+        players[1] = new PlayerEntity(player2Name, 0);
+    }
+
+    public void WonPoint(string playerName)
+    {
+        PlayerEntity foundPlayer = players.FirstOrDefault(player => player.Name == playerName);
+
+        foundPlayer?.IncreaseScore(1);
+    }
+
+    private static string GetPlayerWinText(string playerName)
+    {
+        return $"{ScoreConstants.Win} {playerName}";
+    }
+
+    private static string GetPlayerAdvantageText(string playerName)
+    {
+        return $"{ScoreConstants.Advantage} {playerName}";
+    }
+
+    public string GetScore()
+    {
+        if (IsNeutralScore())
+        {
+            return players[0].GetNeutralScoreText();
+        }
+
+        if (IsMatchmakingScore())
+        {
+            return GetMatchMakingScoreText();
+        }
+
+        return GetIntermittentScoreText();
+    }
+
+    private string GetIntermittentScoreText()
+    {
+        return $"{players[0].GetScoreText()}-{players[1].GetScoreText()}";
+    }
+
+    private string GetMatchMakingScoreText()
+    {
+        int scoreDifference = players[0].Score - players[1].Score;
+        string leadingPlayerName = scoreDifference > 0 
+            ? players[0].Name 
+            : players[1].Name;
+
+        int absScoreDifference = Math.Abs(scoreDifference);
+
+        return absScoreDifference < 2
+            ? GetPlayerAdvantageText(leadingPlayerName)
+            : GetPlayerWinText(leadingPlayerName);
+    }
+
+    private bool IsMatchmakingScore()
+    {
+        return players.Any(player => player.Score >= 4);
+    }
+
+    private bool IsNeutralScore()
+    {
+        return players[0].Score == players[1].Score;
+    }
+}
